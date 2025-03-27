@@ -27,6 +27,14 @@ app.get("/api/users", async (req, res) => {
         res.status(500).json({ message: "Server Error", error });
     }
 });
+app.get("/api/users/:id", async (req, res) => {
+    try {
+        const users = await User.find({ _id : req.params.id }); // Fetch all users from MongoDB
+        res.status(200).json(users);
+    } catch (error) {
+        res.status(500).json({ message: "Server Error", error });
+    }
+});
 
 app.get('/books', async (req, res) => {
     try {

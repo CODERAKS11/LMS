@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const authMiddleware = require("../middlewares/authMiddleware");
 
 const userSchema = new mongoose.Schema(
   {
@@ -21,6 +22,7 @@ const userSchema = new mongoose.Schema(
     borrowedBooks: [
       {
         bookId: { type: mongoose.Schema.Types.ObjectId, ref: "Book" },
+        
         borrowedDate: { type: Date, default: Date.now },
         dueDate: { type: Date },
         returnDate: { type: Date, default: null },

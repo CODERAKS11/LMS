@@ -3,17 +3,13 @@ import { MdMenu } from "react-icons/md";
 import ResponsiveMenu from './ResponsiveMenu.jsx';
 import soeicon from '../assets/soe icon.jpeg';
 import { useNavigate, useLocation } from 'react-router-dom';
-import usericon from '../assets/usericon.svg';
-import Button from '../Components/Button.jsx';
 import { motion, AnimatePresence } from "framer-motion";
-import { AiOutlineMenu } from "react-icons/ai";
-import { AiOutlineUser } from "react-icons/ai";
+import { AiOutlineMenu, AiOutlineUser } from "react-icons/ai";
 
 const Header = ({ setAbout, setMyBooks }) => {
     const [resources, setResources] = useState(false);
     const [others, setOthers] = useState(false);
     const [open, setOpen] = useState(false);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [userDropdownOpen, setUserDropdownOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
@@ -50,10 +46,14 @@ const Header = ({ setAbout, setMyBooks }) => {
         <header className="bg-white shadow-md">
             <div className="container mx-auto px-4 py-4">
                 <div className="flex flex-col space-y-4">
+                    
+                    {/* Logo */}
                     <div className="flex items-center">
                         <img src={soeicon} alt="SOE Icon" className="w-8 h-8" />
                         <h1 className="text-2xl font-bold text-gray-800 ml-0">SOE Library</h1>
                     </div>
+
+                    {/* Navigation Menu */}
                     <div className="flex items-center space-x-4">
                         <button
                             onClick={() => setOpen(true)}
@@ -79,6 +79,8 @@ const Header = ({ setAbout, setMyBooks }) => {
                         >
                             My Books
                         </button>
+
+                        {/* Resources Dropdown */}
                         <div className="relative">
                             <button
                                 onClick={() => setResources(!resources)}
@@ -97,10 +99,7 @@ const Header = ({ setAbout, setMyBooks }) => {
                                         {resourceOptions.map((option) => (
                                             <button
                                                 key={option}
-                                                onClick={() => {
-                                                    // Handle resource option click here
-                                                    console.log(`Clicked ${option}`);
-                                                }}
+                                                onClick={() => console.log(`Clicked ${option}`)}
                                                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                             >
                                                 {option}
@@ -110,6 +109,8 @@ const Header = ({ setAbout, setMyBooks }) => {
                                 )}
                             </AnimatePresence>
                         </div>
+
+                        {/* Other Info Dropdown */}
                         <div className="relative">
                             <button
                                 onClick={() => setOthers(!others)}
@@ -128,10 +129,7 @@ const Header = ({ setAbout, setMyBooks }) => {
                                         {otherInfoOptions.map((option) => (
                                             <button
                                                 key={option}
-                                                onClick={() => {
-                                                    // Handle other info option click here
-                                                    console.log(`Clicked ${option}`);
-                                                }}
+                                                onClick={() => console.log(`Clicked ${option}`)}
                                                 className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                             >
                                                 {option}
@@ -141,6 +139,8 @@ const Header = ({ setAbout, setMyBooks }) => {
                                 )}
                             </AnimatePresence>
                         </div>
+
+                        {/* User Dropdown with Sign In & Admin Login */}
                         <div className="relative ml-auto">
                             <button
                                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
@@ -157,23 +157,20 @@ const Header = ({ setAbout, setMyBooks }) => {
                                         exit={{ opacity: 0, y: -10 }}
                                         className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50"
                                     >
-                                        <button
-                                            onClick={() => handleNavigation('/saved-books', false, false)}
-                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                        >
-                                            Saved Books
-                                        </button>
-                                        <button
-                                            onClick={() => handleNavigation('/borrowed-books', false, false)}
-                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                        >
-                                            Borrowed Books
-                                        </button>
+                                        {/* Sign In Button */}
                                         <button
                                             onClick={() => handleNavigation('/login', false, false)}
                                             className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                         >
                                             Sign In
+                                        </button>
+
+                                        {/* Admin Login Button */}
+                                        <button
+                                            onClick={() => handleNavigation('/admin-login', false, false)}
+                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-100"
+                                        >
+                                            Admin Login
                                         </button>
                                     </motion.div>
                                 )}

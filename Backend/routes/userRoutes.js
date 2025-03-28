@@ -21,7 +21,14 @@ router.post("/register", async (req, res) => {
 
         // Create new user
         const newUser = new User({
-            name, email, password: hashedPassword, role, studentId, facultyId, department, phone
+            name,
+            email,
+            password: hashedPassword,
+            role,
+            studentId: role === "student" ? studentId : undefined,
+            facultyId: role === "staff" ? facultyId : undefined,
+            department,
+            phone
         });
 
         await newUser.save();
@@ -293,7 +300,18 @@ router.put("/override-renewal/:userId/:bookId", adminMiddleware, async (req, res
     }
 });
 
-module.exports = router;
+// Delete a user (Admin only)
+router.delete("/delete/:userId", adminMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.userId);
 
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        await user.remove();
+        res.status(200).json({ message: "User deleted successfully" });
+    } catch (error) {
+        res.status(500).json({ message: "Server Error", error });
+    }
+});
 
 module.exports = router;

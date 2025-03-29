@@ -8,13 +8,14 @@ const Book = require('./models/bookModel');
 const User = require("./models/userModel");
 const bookSearch = require("./routes/bookRoutes");
 const userRoutes = require("./routes/userRoutes");
+const adminRoutes = require('./routes/adminRoutes.js');
 dotenv.config({
     path: './.env'
 });
 app.use(cors())
 app.use(express.json())
 
-
+app.use('/api/admin', adminRoutes);
 app.use("/api/books",bookSearch)
 
 app.use("/api/users", userRoutes);

@@ -1,3 +1,5 @@
+const dotenv = require("dotenv");
+dotenv.config(); // Load environment variables from .env file
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -6,7 +8,7 @@ const Book = require("../models/bookModel");
 const authMiddleware = require("../middlewares/authMiddleware.js"); // Protect routes
 const adminMiddleware = require("../middlewares/adminMiddleware.js"); // Protect admin routes
 const router = express.Router();
-
+const secretKey = process.env.JWT_SECRET; // Use .env secret
 // 📌 1️⃣ Register a New User (Student or Faculty)
 router.post("/register", async (req, res) => {
     try {
@@ -52,7 +54,7 @@ router.post("/login", async (req, res) => {
         if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
         // Generate JWT Token
-        const token = jwt.sign({ id: user._id, role: user.role }, "secretKey", { expiresIn: "1h" });
+        const token = jwt.sign({ id: user._id, role: user.role }, secretKey, { expiresIn: "1h" });
 
         res.status(200).json({ message: "Login successful", token, user: { id: user._id, name: user.name, role: user.role }});
     } catch (error) {

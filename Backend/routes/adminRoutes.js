@@ -2,34 +2,31 @@ const express = require("express");
 const router = express.Router();
 const User = require("../models/userModel");
 const Book = require("../models/bookModel");
-const authMiddleware = require("../middlewares/authMiddleware");
 const adminMiddleware = require("../middlewares/adminMiddleware");
+const bcrypt = require("bcryptjs");
 
 // ✅ 1️⃣ Admin: Add a New Book
 router.post("/add-book", adminMiddleware, async (req, res) => {
     try {
-        const { title, author, genre, callNumber, totalCopies } = req.body;
+        const { title, author, genre, ISBN, callNumber, totalCopies } = req.body;
 
         if (!title || !author || !genre || !callNumber || !totalCopies) {
             return res.status(400).json({ message: "All fields are required" });
         }
 
-        const existingBook = await Book.findOne({ callNumber });
+        const existingBook = await Book.findOne({ ISBN });
         if (existingBook) {
-            return res.status(400).json({ message: "Book with this call number already exists" });
+            return res.status(400).json({ message: "Book with this ISBN already exists" });
         }
 
         const newBook = new Book({
             title,
             author,
             genre,
+            ISBN,
             callNumber,
             totalCopies,
             availableCopies: totalCopies,
-            searchCount: 0,
-            borrowCount: 0,
-            borrowers: [],
-            reservedBy: []
         });
 
         await newBook.save();
@@ -53,7 +50,7 @@ router.put("/update-book/:bookId", adminMiddleware, async (req, res) => {
 
         res.status(200).json({ message: "Book updated successfully", book });
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error });
+        res.status(500).json({ message: "Server Error", error: error.message });
     }
 });
 
@@ -69,7 +66,7 @@ router.delete("/delete-book/:bookId", adminMiddleware, async (req, res) => {
 
         res.status(200).json({ message: "Book deleted successfully" });
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error });
+        res.status(500).json({ message: "Server Error", error: error.message });
     }
 });
 
@@ -79,7 +76,7 @@ router.get("/users", adminMiddleware, async (req, res) => {
         const users = await User.find().select("-password");
         res.status(200).json(users);
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error });
+        res.status(500).json({ message: "Server Error", error: error.message });
     }
 });
 
@@ -95,7 +92,7 @@ router.delete("/delete-user/:userId", adminMiddleware, async (req, res) => {
 
         res.status(200).json({ message: "User deleted successfully" });
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error });
+        res.status(500).json({ message: "Server Error", error: error.message });
     }
 });
 
@@ -108,7 +105,6 @@ router.put("/reset-password/:userId", adminMiddleware, async (req, res) => {
         const user = await User.findById(userId);
         if (!user) return res.status(404).json({ message: "User not found" });
 
-        const bcrypt = require("bcryptjs");
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
         user.password = hashedPassword;
@@ -116,7 +112,7 @@ router.put("/reset-password/:userId", adminMiddleware, async (req, res) => {
 
         res.status(200).json({ message: "Password reset successfully" });
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error });
+        res.status(500).json({ message: "Server Error", error: error.message });
     }
 });
 
@@ -128,7 +124,7 @@ router.get("/reservations", adminMiddleware, async (req, res) => {
 
         res.status(200).json(books);
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error });
+        res.status(500).json({ message: "Server Error", error: error.message });
     }
 });
 
@@ -147,7 +143,7 @@ router.put("/override-renewal/:userId/:bookId", adminMiddleware, async (req, res
             return res.status(404).json({ message: "Book not found" });
         }
 
-        const borrowedBook = user.borrowedBooks?.find(b => b.bookId.toString() === book._id.toString());
+        const borrowedBook = user.borrowedBooks.find(b => b.bookId.toString() === book._id.toString());
         if (!borrowedBook) {
             return res.status(400).json({ message: "Book not borrowed by this user" });
         }
@@ -167,7 +163,7 @@ router.get("/report/most-borrowed", adminMiddleware, async (req, res) => {
         const books = await Book.find().sort({ borrowCount: -1 }).limit(10);
         res.status(200).json(books);
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error });
+        res.status(500).json({ message: "Server Error", error: error.message });
     }
 });
 
@@ -177,7 +173,7 @@ router.get("/report/most-searched", adminMiddleware, async (req, res) => {
         const books = await Book.find().sort({ searchCount: -1 }).limit(10);
         res.status(200).json(books);
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error });
+        res.status(500).json({ message: "Server Error", error: error.message });
     }
 });
 
@@ -194,14 +190,14 @@ router.get("/report/fines", adminMiddleware, async (req, res) => {
             fines: user.borrowedBooks
                 .filter(b => b.fine > 0)
                 .map(b => ({
-                    bookTitle: b.bookId.title,
+                    bookTitle: b.bookId?.title || "Unknown",
                     fine: b.fine
                 }))
         }));
 
         res.status(200).json(fineReport);
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error });
+        res.status(500).json({ message: "Server Error", error: error.message });
     }
 });
 
@@ -218,7 +214,7 @@ router.get("/borrowed-books", adminMiddleware, async (req, res) => {
                 ?.filter(b => b.status === "borrowed")
                 .map(b => ({
                     bookTitle: b.bookId?.title || "Unknown",
-                    borrowDate: b.borrowDate,
+                    borrowDate: b.borrowedDate,
                     dueDate: b.dueDate
                 }))
         }));

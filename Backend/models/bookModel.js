@@ -18,19 +18,19 @@ mongoose.connect(url)
 
 const bookSchema = new mongoose.Schema(
     {
-    title: { type: String, required: true, index: true },
-    author: { type: String, required: true, index: true },
-    publicationYear: { type: Number, required: true },
-    genre: { type: String, required: true, index: true },
-    ISBN: { type: String, unique: true, required: true },
-    callNumber: { type: String, unique: true, required: true },
-    publisher: { type: String, required: true },
-    pages: { type: Number, required: true },
+    title: { type: String, required: false, index: true },
+    author: { type: String, required: false, index: true },
+    publicationYear: { type: Number, required: false },
+    genre: { type: String, required: false, index: true },
+    ISBN: { type: String, unique: true, required: false },
+    callNumber: { type: String, unique: true, required: false },
+    publisher: { type: String, required: false },
+    pages: { type: Number, required: false },
     language: { type: String, default: "English" },
     
     // Availability Tracking
-    totalCopies: { type: Number, required: true, default: 1 }, // Total copies owned by the library
-    availableCopies: { type: Number, required: true, default: 1 }, // Copies currently available
+    totalCopies: { type: Number, required: false, default: 1 }, // Total copies owned by the library
+    availableCopies: { type: Number, required: false, default: 1 }, // Copies currently available
     isAvailable: { type: Boolean, default: true }, // True if at least one copy is available
 
     // Borrowing Details
@@ -50,16 +50,16 @@ const bookSchema = new mongoose.Schema(
     borrowCount: { type: Number, default: 0 },  // Count how many times the book was borrowed
 
     // Book Format & Category
-    format: { type: String, enum: ["Hardcover", "Paperback", "Ebook", "Audiobook"], required: true },
-    category: { type: String, required: true }, // Helps in filtering by category
+    format: { type: String, enum: ["Hardcover", "Paperback", "Ebook", "Audiobook"], required: false },
+    category: { type: String, required: false }, // Helps in filtering by category
     
     // Digital Copy URL (for eBooks, if applicable)
     digitalCopyURL: { type: String, default: null }, 
 
     // Cover Image & Description
-    description: { type: String, required: true },
-    coverImage: { type: String, required: true }, // URL to the book cover image
-    summary: { type: String, required: true },
+    description: { type: String, required: false },
+    coverImage: { type: String, required: false }, // URL to the book cover image
+    summary: { type: String, required: false },
 
     // Reviews & Ratings
     rating: { type: Number, min: 0, max: 5, default: 0 },
@@ -81,7 +81,7 @@ const bookSchema = new mongoose.Schema(
     ],
 
     // Extra Features
-    // addedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", required: true }, 
+    // addedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin", required: false }, 
     lastUpdated: { type: Date, default: Date.now }
     },
     { timestamps: true }

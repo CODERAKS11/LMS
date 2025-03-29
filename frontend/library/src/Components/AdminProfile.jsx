@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 
-// 🔥 Components
+// 🔥 Reusable Components
 const Button = ({ children, onClick, className = "" }) => (
   <button
     onClick={onClick}
@@ -13,12 +13,15 @@ const Button = ({ children, onClick, className = "" }) => (
 );
 
 const Card = ({ children, className = "" }) => (
-  <div className={`bg-white shadow-lg rounded-lg p-4 ${className}`}>{children}</div>
+  <div className={`bg-white shadow-lg rounded-lg p-4 ${className}`}>
+    {children}
+  </div>
 );
 
-const Input = ({ type = "text", placeholder, value, onChange, className = "" }) => (
+const Input = ({ type = "text", placeholder, name, value, onChange, className = "" }) => (
   <input
     type={type}
+    name={name}
     placeholder={placeholder}
     value={value}
     onChange={onChange}
@@ -59,25 +62,32 @@ const TabsTrigger = ({ value, children, activeTab, setActiveTab }) => (
 
 const AdminProfile = () => {
   const [books, setBooks] = useState([]);
-  const [users, setUsers] = useState([]);
+  const [showAddBookForm, setShowAddBookForm] = useState(false);
+  
   const [newBook, setNewBook] = useState({
     title: "",
     author: "",
+    publicationYear: "",
     genre: "",
+    ISBN: "",
     callNumber: "",
-    totalCopies: 0,
-  });
-  const [newUser, setNewUser] = useState({
-    name: "",
-    email: "",
-    password: "",
-    role: "student", // Default role
-    studentId: "",
-    department: "",
-    phone: "",
+    publisher: "",
+    pages: "",
+    language: "",
+    totalCopies: "",
+    availableCopies: "",
+    isAvailable: true,
+    searchCount: "",
+    borrowCount: "",
+    format: "",
+    category: "",
+    digitalCopyURL: "",
+    description: "",
+    coverImage: "",
+    summary: "",
+    rating: "",
   });
 
-  // ✅ Fetch Data on Component Mount
   useEffect(() => {
     fetchData();
   }, []);
@@ -85,25 +95,19 @@ const AdminProfile = () => {
   const fetchData = async () => {
     try {
       const token = localStorage.getItem("token");
-
       if (!token) {
         toast.error("Unauthorized: Please log in.");
         return;
       }
 
       const headers = { Authorization: `Bearer ${token}` };
-
-      const [bookRes, userRes] = await Promise.all([
-        axios.get("http://localhost:3001/books", { headers }),
-        axios.get("http://localhost:3001/api/users", { headers }),
-      ]);
+      const bookRes = await axios.get("http://localhost:3001/books", { headers });
 
       setBooks(bookRes.data);
-      setUsers(userRes.data);
-      toast.success("Data fetched successfully!");
+      toast.success("Books fetched successfully!");
     } catch (error) {
       console.error("Error fetching data:", error);
-      toast.error("Failed to fetch data!");
+      toast.error("Failed to fetch books!");
     }
   };
 
@@ -112,12 +116,6 @@ const AdminProfile = () => {
     setNewBook((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleUserInputChange = (e) => {
-    const { name, value } = e.target;
-    setNewUser((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // ✅ Add Book
   const handleAddBook = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -129,60 +127,36 @@ const AdminProfile = () => {
       await axios.post("http://localhost:3001/api/admin/add-book", newBook, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       toast.success("Book added successfully!");
       fetchData();
+      setShowAddBookForm(false);
+      setNewBook({
+        title: "",
+        author: "",
+        publicationYear: "",
+        genre: "",
+        ISBN: "",
+        callNumber: "",
+        publisher: "",
+        pages: "",
+        language: "",
+        totalCopies: "",
+        availableCopies: "",
+        isAvailable: true,
+        searchCount: "",
+        borrowCount: "",
+        format: "",
+        category: "",
+        digitalCopyURL: "",
+        description: "",
+        coverImage: "",
+        summary: "",
+        rating: "",
+      });
     } catch (error) {
-      console.error("Add Book Error:", error.response);
+      console.error("Add Book Error:", error);
       toast.error("Failed to add book!");
-    }
-  };
-
-  // ✅ Add User
-  const handleAddUser = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      toast.error("Unauthorized: Please log in.");
-      return;
-    }
-
-    try {
-      await axios.post("http://localhost:3001/api/users/register", newUser, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      toast.success("User added successfully!");
-      fetchData();
-    } catch (error) {
-      console.error("Add User Error:", error.response);
-      toast.error("Failed to add user!");
-    }
-  };
-
-  // ✅ Delete User with Token Authorization
-  const handleDeleteUser = async (userId) => {
-    try {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        toast.error("Unauthorized: Please log in.");
-        return;
-      }
-
-      console.log("Token being sent:", token);  // ✅ Verify token being sent
-
-      await axios.delete(`http://localhost:3001/api/users/delete/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      toast.success("User deleted successfully!");
-      fetchData();
-    } catch (error) {
-      console.error("Delete User Error:", error.response);  // ✅ Improved error logging
-
-      if (error.response && error.response.status === 401) {
-        toast.error("Unauthorized: Invalid token.");
-      } else {
-        toast.error("Failed to delete user!");
-      }
     }
   };
 
@@ -190,17 +164,42 @@ const AdminProfile = () => {
     <div className="p-6">
       <Tabs defaultValue="manage-books">
         <TabsTrigger value="manage-books">📚 Manage Books</TabsTrigger>
-        <TabsTrigger value="manage-users">👥 Manage Users</TabsTrigger>
 
         <div value="manage-books">
           <Card>
-            <h2 className="text-xl font-bold mb-4">Add New Book</h2>
-            <Input name="title" placeholder="Title" onChange={handleInputChange} />
-            <Input name="author" placeholder="Author" onChange={handleInputChange} />
-            <Input name="genre" placeholder="Genre" onChange={handleInputChange} />
-            <Input name="callNumber" placeholder="Call Number" onChange={handleInputChange} />
-            <Input name="totalCopies" type="number" placeholder="Total Copies" onChange={handleInputChange} />
-            <Button onClick={handleAddBook}>Add Book</Button>
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold">Books</h2>
+              <Button onClick={() => setShowAddBookForm((prev) => !prev)}>
+                {showAddBookForm ? "Hide Form" : "Add Book"}
+              </Button>
+            </div>
+
+            {showAddBookForm && (
+              <div className="mt-4">
+                <h3 className="text-lg font-bold">Add New Book</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input name="title" placeholder="Title" value={newBook.title} onChange={handleInputChange} />
+                  <Input name="author" placeholder="Author" value={newBook.author} onChange={handleInputChange} />
+                  <Input name="publicationYear" type="number" placeholder="Publication Year" value={newBook.publicationYear} onChange={handleInputChange} />
+                  <Input name="genre" placeholder="Genre" value={newBook.genre} onChange={handleInputChange} />
+                  <Input name="ISBN" placeholder="ISBN" value={newBook.ISBN} onChange={handleInputChange} />
+                  <Input name="callNumber" placeholder="Call Number" value={newBook.callNumber} onChange={handleInputChange} />
+                  <Input name="publisher" placeholder="Publisher" value={newBook.publisher} onChange={handleInputChange} />
+                  <Input name="pages" type="number" placeholder="Pages" value={newBook.pages} onChange={handleInputChange} />
+                  <Input name="language" placeholder="Language" value={newBook.language} onChange={handleInputChange} />
+                  <Input name="totalCopies" type="number" placeholder="Total Copies" value={newBook.totalCopies} onChange={handleInputChange} />
+                  <Input name="availableCopies" type="number" placeholder="Available Copies" value={newBook.availableCopies} onChange={handleInputChange} />
+                  <Input name="format" placeholder="Format" value={newBook.format} onChange={handleInputChange} />
+                  <Input name="category" placeholder="Category" value={newBook.category} onChange={handleInputChange} />
+                  <Input name="digitalCopyURL" placeholder="Digital Copy URL" value={newBook.digitalCopyURL} onChange={handleInputChange} />
+                  <Input name="coverImage" placeholder="Cover Image URL" value={newBook.coverImage} onChange={handleInputChange} />
+                  <Input name="description" placeholder="Description" value={newBook.description} onChange={handleInputChange} />
+                  <Input name="summary" placeholder="Summary" value={newBook.summary} onChange={handleInputChange} />
+                  <Input name="rating" type="number" placeholder="Rating" value={newBook.rating} onChange={handleInputChange} />
+                </div>
+                <Button onClick={handleAddBook} className="mt-4">Submit Book</Button>
+              </div>
+            )}
           </Card>
 
           <Table>
@@ -210,7 +209,6 @@ const AdminProfile = () => {
                 <th>Author</th>
                 <th>Genre</th>
                 <th>Copies</th>
-                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -220,40 +218,6 @@ const AdminProfile = () => {
                   <td>{book.author}</td>
                   <td>{book.genre}</td>
                   <td>{book.totalCopies}</td>
-                  <td>
-                    <Button onClick={() => handleDeleteUser(book._id)}>Delete</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </div>
-
-        <div value="manage-users">
-          <Card>
-            <h2 className="text-xl font-bold mb-4">Add New User</h2>
-            <Input name="name" placeholder="Name" onChange={handleUserInputChange} />
-            <Input name="email" placeholder="Email" onChange={handleUserInputChange} />
-            <Input name="password" type="password" placeholder="Password" onChange={handleUserInputChange} />
-            <Button onClick={handleAddUser}>Add User</Button>
-          </Card>
-
-          <Table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user._id}>
-                  <td>{user.name}</td>
-                  <td>{user.email}</td>
-                  <td>
-                    <Button onClick={() => handleDeleteUser(user._id)}>Delete</Button>
-                  </td>
                 </tr>
               ))}
             </tbody>

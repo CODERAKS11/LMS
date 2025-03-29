@@ -1,5 +1,5 @@
 const dotenv = require("dotenv");
-dotenv.config(); // Load environment variables from .env file
+
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");

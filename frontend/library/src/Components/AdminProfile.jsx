@@ -160,6 +160,26 @@ const AdminProfile = () => {
     }
   };
 
+  const handleDeleteBook = async (bookId) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("Unauthorized: Please log in.");
+      return;
+    }
+
+    try {
+      await axios.delete(`http://localhost:3001/api/admin/delete-book/${bookId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      toast.success("Book deleted successfully!");
+      fetchData();
+    } catch (error) {
+      console.error("Delete Book Error:", error);
+      toast.error("Failed to delete book!");
+    }
+  };
+
   return (
     <div className="p-6">
       <Tabs defaultValue="manage-books">
@@ -188,14 +208,6 @@ const AdminProfile = () => {
                   <Input name="pages" type="number" placeholder="Pages" value={newBook.pages} onChange={handleInputChange} />
                   <Input name="language" placeholder="Language" value={newBook.language} onChange={handleInputChange} />
                   <Input name="totalCopies" type="number" placeholder="Total Copies" value={newBook.totalCopies} onChange={handleInputChange} />
-                  <Input name="availableCopies" type="number" placeholder="Available Copies" value={newBook.availableCopies} onChange={handleInputChange} />
-                  <Input name="format" placeholder="Format" value={newBook.format} onChange={handleInputChange} />
-                  <Input name="category" placeholder="Category" value={newBook.category} onChange={handleInputChange} />
-                  <Input name="digitalCopyURL" placeholder="Digital Copy URL" value={newBook.digitalCopyURL} onChange={handleInputChange} />
-                  <Input name="coverImage" placeholder="Cover Image URL" value={newBook.coverImage} onChange={handleInputChange} />
-                  <Input name="description" placeholder="Description" value={newBook.description} onChange={handleInputChange} />
-                  <Input name="summary" placeholder="Summary" value={newBook.summary} onChange={handleInputChange} />
-                  <Input name="rating" type="number" placeholder="Rating" value={newBook.rating} onChange={handleInputChange} />
                 </div>
                 <Button onClick={handleAddBook} className="mt-4">Submit Book</Button>
               </div>
@@ -209,6 +221,7 @@ const AdminProfile = () => {
                 <th>Author</th>
                 <th>Genre</th>
                 <th>Copies</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -218,6 +231,11 @@ const AdminProfile = () => {
                   <td>{book.author}</td>
                   <td>{book.genre}</td>
                   <td>{book.totalCopies}</td>
+                  <td>
+                    <Button onClick={() => handleDeleteBook(book._id)} className="bg-red-500 hover:bg-red-600">
+                      Delete
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -13,7 +13,9 @@ import { AnimatePresence } from 'framer-motion';
 import SavedBooks from './Page/SavedBooks';
 import BorrowedBooks from './Page/BorrowedBooks';
 import UserProfile from './Components/UserProfile.jsx';
+import EachUserProfile from './Page/EachUserProfile.jsx';
 import AdminProfile from './Components/AdminProfile.jsx';  // ✅ Admin Dashboard
+import BookProfile from './Components/BookProfile.jsx';
 
 const AppContent = () => {
   const [about, setAbout] = useState(false);
@@ -33,7 +35,8 @@ const AppContent = () => {
             
             <Route path="/profile" element={<UserProfile />} />
             <Route path="/admin-dashboard" element={<AdminProfile />} />  {/* ✅ Admin Dashboard */}
-            
+            <Route path="/user-profile/:userId" element={<EachUserProfile />} />
+            <Route path="/book-profile/:bookId" element={<BookProfile />} />
             <Route path="/about" element={<About />} />
             <Route path="/mybooks" element={<BookList />} />
             <Route path="/borrow" element={<BorrowPage />} />

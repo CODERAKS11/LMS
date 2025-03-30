@@ -70,6 +70,47 @@ const UserProfile = () => {
         }
     };
 
+    const handleReview = (bookId) => {
+        const reviewText = prompt("Enter your review:");
+        const rating = prompt("Enter your rating (0-5):");
+    
+        if (reviewText && rating) {
+            const token = localStorage.getItem("authToken");
+            axios.post(
+                `http://localhost:3001/api/users/review/${bookId}`,
+                { reviewText, rating },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            )
+            .then((response) => {
+                alert("Review submitted successfully!");
+    
+                // Update the user state to reflect the new review
+                setUser((prevUser) => {
+                    const updatedBorrowedBooks = prevUser.borrowedBooks.map((book) => {
+                        if (book.bookId === bookId) {
+                            return {
+                                ...book,
+                                review: { reviewText, rating }, // Add the review to the book
+                            };
+                        }
+                        return book;
+                    });
+    
+                    return { ...prevUser, borrowedBooks: updatedBorrowedBooks };
+                });
+            })
+            .catch((error) => {
+                console.error("Error submitting review:", error);
+                alert("Failed to submit review.");
+            });
+        }
+    };
+    
+
     if (loading) {
         return <div className="flex justify-center items-center min-h-screen text-xl">Loading...</div>;
     }
@@ -94,7 +135,7 @@ const UserProfile = () => {
     if (!user) {
         return <div className="flex justify-center items-center min-h-screen text-xl">No user data found.</div>;
     }
-
+    console.log(user.borrowedBooks);  
     return (
         <div className="min-h-screen bg-gray-100 py-10 px-4">
             <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
@@ -131,10 +172,34 @@ const UserProfile = () => {
                                     {user.borrowedBooks.map((book, index) => (
                                         <li key={index} className="border-b pb-4">
                                             <p><strong>Book ID:</strong> {book.bookId}</p>
+                                            <p><strong>Title:</strong> {book.bookTitle}</p>
+                                            <p><strong>Author:</strong> {book.bookAuthor}</p>
+                                            
                                             <p><strong>Borrowed Date:</strong> {moment(book.borrowedDate).format('DD-MM-YYYY')}</p>
                                             <p><strong>Due Date:</strong> {moment(book.dueDate).format('DD-MM-YYYY')}</p>
+                                            <p><strong>Return Date:</strong> {book.returnDate ? moment(book.returnDate).format('DD-MM-YYYY') : 'Not returned yet'}</p>
                                             <p><strong>Status:</strong> {book.status}</p>
                                             <p><strong>Renewals:</strong> {book.renewals}</p>
+                                            <div className="mt-4">
+                                                {/* Display the review if it exists */}
+                                                    {book.review ? (
+                                                        <div className="mt-4 bg-gray-100 p-4 rounded-lg">
+                                                            <h4 className="text-sm font-semibold">Your Review:</h4>
+                                                            <p><strong>Review:</strong> {book.review.reviewText}</p>
+                                                            <p><strong>Rating:</strong> {book.review.rating}/5</p>
+                                                        </div>
+                                                    ) : (
+                                                        // Render the Review button only if the book is returned and no review exists
+                                                        book.status === "returned" && (
+                                                            <button
+                                                                onClick={() => handleReview(book.bookId)}
+                                                                className="px-4 py-2 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600"
+                                                            >
+                                                                Review Book
+                                                            </button>
+                                                        )
+                                                    )}
+                                            </div>
                                             <div className="bg-gray-100 p-2 mt-2 rounded-md">
                                                 <h4 className="text-sm font-semibold">Renewal History:</h4>
                                                 {book.renewalHistory && book.renewalHistory.length > 0 ? (
@@ -148,13 +213,16 @@ const UserProfile = () => {
                                                     <p>No renewals yet</p>
                                                 )}
                                             </div>
-                                            <button
-                                                onClick={() => handleRenew(book.bookId)}
-                                                disabled={renewing}
-                                                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 disabled:opacity-50"
-                                            >
-                                                {renewing ? 'Renewing...' : 'Renew Book'}
-                                            </button>
+                                            {/* Render the Renew button only if the book is not returned */}
+                                            {book.status !== "returned" && (
+                                                <button
+                                                    onClick={() => handleRenew(book.bookId)}
+                                                    disabled={renewing}
+                                                    className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 disabled:opacity-50"
+                                                >
+                                                    {renewing ? 'Renewing...' : 'Renew Book'}
+                                                </button>
+                                            )}
                                         </li>
                                     ))}
                                 </ul>
@@ -163,6 +231,24 @@ const UserProfile = () => {
                             )}
                         </div>
                     </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg shadow-md mt-6">
+                    <h3 className="text-xl font-semibold mb-4">Reservations</h3>
+
+                    {user.reservations && user.reservations.length > 0 ? (
+                        <ul className="space-y-4">
+                            {user.reservations.map((reservation, index) => (
+                                <li key={index} className="border-b pb-4">
+                                    <p><strong>Book Title:</strong> {reservation.bookTitle}</p>
+                                    <p><strong>Reserved Date:</strong> {moment(reservation.reservedDate).format('DD-MM-YYYY')}</p>
+                                    <p><strong>Status:</strong> {reservation.status}</p>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p>No reservations made.</p>
+                    )}
                 </div>
 
                 <div className="flex justify-end p-6 border-t">

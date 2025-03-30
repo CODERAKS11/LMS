@@ -75,72 +75,115 @@ router.get("/profile", authMiddleware, async (req, res) => {
 });
 
 // 📌 4️⃣ Borrow a Book (Protected)
+// 📌 4️⃣ Borrow a Book (Protected)
 router.post("/borrow/:bookId", authMiddleware, async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user.id; // Get user ID from auth middleware
         const user = await User.findById(userId);
-        
         const book = await Book.findById(req.params.bookId);
+
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
-        if (!book) return res.status(404).json({ message: "Book not found" });
-        const borrowedBooks = await Book.countDocuments({
-            "borrowers.userId": userId,
-            "borrowers.returnDate": null // Only count unreturned books
-        });
+        if (!book) {
+            return res.status(404).json({ message: "Book not found" });
+        }
 
+        // Check if the user has already borrowed 3 books
+        const borrowedBooks = user.borrowedBooks.filter(b => b.status === "borrowed").length;
         if (borrowedBooks >= 3) {
             return res.status(400).json({ message: "You cannot borrow more than 3 books at a time" });
         }
-        if (book.availableCopies <= 0) return res.status(400).json({ message: "No copies available" });
 
-        // Set Borrow Dates
+        // Check if the book is available
+        if (book.availableCopies <= 0) {
+            return res.status(400).json({ message: "No copies available" });
+        }
+
+        let LoanPeriod = book.loanPeriod; // Default loan period
+        if (book.borrowCount > 5) {
+            LoanPeriod = 7; // High demand
+        } else if (book.borrowCount > 2) {
+            LoanPeriod = 10; // Medium demand
+        } else {
+            LoanPeriod = 14; // Low demand
+        }
+
+        // Set borrow dates
         const borrowDate = new Date();
-        const DueDate = new Date();
-        DueDate.setDate(DueDate.getDate() + 14); // 14-day loan period
+        const dueDate = new Date(borrowDate);
+        dueDate.setDate(borrowDate.getDate() + LoanPeriod); // Add loanPeriod days to borrow date
 
-        user.borrowedBooks.push({ bookId: book._id, borrowDate, DueDate, status: "borrowed" });
-        // Decrease available copies and increase borrow count
+        // Set borrow dates
+
+
+        // Add book to user's borrowedBooks
+        user.borrowedBooks.push({
+            bookId: book._id,
+            bookTitle: book.title,
+            bookAuthor: book.author,
+            bookISBN: book.isbn,
+            borrowDate,
+            dueDate,
+            status: "borrowed",
+        });
+
+        // Update book's availableCopies and borrowCount
         book.availableCopies -= 1;
         book.borrowCount += 1;
-        // Add borrower to book's borrowers list
+
+        // Add user to book's borrowers list
         book.borrowers.push({
-                userId: user._id, 
-                borrowedDate: borrowDate,
-                dueDate: DueDate,
-                returnDate:  null,
-                });
+            userId: user._id,
+            borrowedDate: borrowDate,
+            dueDate: dueDate,
+            returnDate: null,
+            loanPeriod: LoanPeriod,
+        });
+
+        // Save changes to the database
         await user.save();
         await book.save();
 
-        res.status(200).json({ message: "Book borrowed successfully", borrowedBook: { bookId: book._id, borrowDate, DueDate } });
+        res.status(200).json({
+            message: "Book borrowed successfully",
+            borrowedBook: { bookId: book._id, borrowDate, dueDate },
+        });
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error });
+        console.error("Error in borrow endpoint:", error);
+        res.status(500).json({ message: "Server Error", error: error.message });
     }
 });
 
 // 📌 5️⃣ Return a Book (Protected)
-router.post("/return/:bookId", authMiddleware, async (req, res) => {
+router.post("/return/:userId/:bookId", authMiddleware, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
-        const book = await Book.findById(req.params.bookId);
-
+        // const user = await User.findById(req.user.id);
+        const { userId, bookId } = req.params; 
+        const user = await User.findById(userId);
+        const book = await Book.findById(bookId);
+        console.log(user, book);
+        if (!user) return res.status(404).json({ message: "User not found" });
         if (!book) return res.status(404).json({ message: "Book not found" });
 
         // Find the borrowed book in user's records
-        const borrowedBook = user.borrowedBooks.find(b => 
+        const borrowedBook = await user.borrowedBooks.find(b => 
             b.bookId.toString() === book._id.toString() && b.status === "borrowed"
         );
-
+        // console.log(borrowedBook);
         // Find the corresponding borrowed record in the book's borrowers list
-        const returnedBook = book.borrowers.find(b => 
+        const returnedBook =await book.borrowers.find(b => 
             b.userId.toString() === user._id.toString() && b.returnDate === null
         );
-
+        // console.log(returnedBook);
+        // console.log("borrowed book comp",b.bookId.toString() ,book._id.toString())
+        // console.log("returned book comp",b.userId.toString(), user._id.toString())
         if (!borrowedBook || !returnedBook) {
             return res.status(400).json({ message: "Book not borrowed or already returned" });
         }
+
+        // if (!returnedBook) {
+        //     return res.status(400).json({ message: "Book already returned" });
 
         // Set return date
         const returnDate = new Date();
@@ -239,25 +282,36 @@ router.put("/renew/:bookId", authMiddleware, async (req, res) => {
 // Reserve a book
 router.post("/reserve/:bookId", authMiddleware, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id);
+        const userId = req.user.id;
+        const user = await User.findById(userId);
         const book = await Book.findById(req.params.bookId);
 
+        if (!user) return res.status(404).json({ message: "User not found" });
         if (!book) return res.status(404).json({ message: "Book not found" });
 
-        if (book.availableCopies > 0) {
-            return res.status(400).json({ message: "Book is available. No need to reserve." });
-        }
+        // Add reservation to the book
+        book.reservations.push({
+            userId: user._id,
+            email: user.email,
+            reservedDate: new Date(),
+            status: "Pending"
+        });
 
-        if (book.reservedBy.includes(user._id)) {
-            return res.status(400).json({ message: "You have already reserved this book." });
-        }
+        // Add reservation to the user
+        user.reservations.push({
+            bookId: book._id,
+            bookTitle: book.title,
+            reservedDate: new Date(),
+            status: "Pending"
+        });
 
-        book.reservedBy.push(user._id);
         await book.save();
+        await user.save();
 
         res.status(200).json({ message: "Book reserved successfully" });
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error });
+        console.error("Error reserving book:", error);
+        res.status(500).json({ message: "Server Error", error: error.message });
     }
 });
 
@@ -315,5 +369,41 @@ router.delete("/delete/:userId", adminMiddleware, async (req, res) => {
         res.status(500).json({ message: "Server Error", error });
     }
 });
+
+router.post("/review/:bookId", authMiddleware, async (req, res) => {
+    try {
+        const { bookId } = req.params;
+        const { reviewText, rating } = req.body;
+        const userId = req.user.id;
+
+        // Validate rating
+        if (rating < 0 || rating > 5) {
+            return res.status(400).json({ message: "Rating must be between 0 and 5." });
+        }
+
+        // Find the book
+        const book = await Book.findById(bookId);
+        if (!book) {
+            return res.status(404).json({ message: "Book not found." });
+        }
+
+        // Add the review to the book's reviews array
+        book.reviews.push({
+            userId,
+            reviewText,
+            rating,
+            date: new Date(),
+        });
+
+        // Save the book
+        await book.save();
+
+        res.status(200).json({ message: "Review submitted successfully." });
+    } catch (error) {
+        console.error("Error submitting review:", error);
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+});
+
 
 module.exports = router;

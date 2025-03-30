@@ -48,7 +48,7 @@ const bookSchema = new mongoose.Schema(
     ],
     searchCount: { type: Number, default: 0 }, // Count how many times the book was searched
     borrowCount: { type: Number, default: 0 },  // Count how many times the book was borrowed
-
+    loanPeriod: { type: Number, default: 14 }, // Default loan period in days
     // Book Format & Category
     format: { type: String, enum: ["Hardcover", "Paperback", "Ebook", "Audiobook"], required: false },
     category: { type: String, required: false }, // Helps in filtering by category
@@ -75,6 +75,7 @@ const bookSchema = new mongoose.Schema(
     reservations: [
         {
             userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+            email: { type: String, required: true }, // Store the user's email
             reservedDate: { type: Date, default: Date.now },
             status: { type: String, enum: ["Pending", "Fulfilled", "Cancelled"], default: "Pending" }
         }

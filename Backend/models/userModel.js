@@ -22,9 +22,11 @@ const userSchema = new mongoose.Schema(
     borrowedBooks: [
       {
         bookId: { type: mongoose.Schema.Types.ObjectId, ref: "Book" },
+        bookTitle: { type: String }, // Title of the Book
+        bookAuthor: { type: String }, // Author of the Book
         
         borrowedDate: { type: Date, default: Date.now },
-        dueDate: { type: Date },
+        dueDate: { type: Date, default: Date.now  },
         returnDate: { type: Date, default: null },
         status: { type: String, enum: ["borrowed", "returned"], default: "borrowed" },
         renewals: { type: Number, default: 0 },
@@ -46,10 +48,11 @@ const userSchema = new mongoose.Schema(
     reservations: [
       {
           bookId: { type: mongoose.Schema.Types.ObjectId, ref: "Book" },
+          bookTitle: { type: String, required: true }, // Store the book's title
           reservedDate: { type: Date, default: Date.now },
-          status: { type: String, enum: ["Pending", "Fulfilled", "Cancelled"], default: "Pending" } // 🔹 Status of reservation
+          status: { type: String, enum: ["Pending", "Fulfilled", "Cancelled"], default: "Pending" }
       }
-    ],
+  ],
 
     // Account Management
     createdAt: { type: Date, default: Date.now },

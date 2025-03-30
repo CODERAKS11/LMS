@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-
+import { useNavigate } from "react-router-dom";
 // 🔥 Reusable Components
 const Button = ({ children, onClick, className = "" }) => (
   <button
@@ -61,11 +61,16 @@ const TabsTrigger = ({ value, children, activeTab, setActiveTab }) => (
 );
 
 const AdminProfile = () => {
+  const navigate = useNavigate();
+  const handleViewProfile = (userId) => {
+    navigate(`/user-profile/${userId}`); // Navigate to the user profile page
+  };
   const [books, setBooks] = useState([]);
   const [users, setUsers] = useState([]);
   const [showAddBookForm, setShowAddBookForm] = useState(false);
   const [showAddUserForm, setShowAddUserForm] = useState(false);
-
+  const [editBook, setEditBook] = useState(null); // State for editing a book
+  const [editUser, setEditUser] = useState(null); // State for editing a user
   const [newBook, setNewBook] = useState({
     title: "",
     author: "",
@@ -248,6 +253,44 @@ const AdminProfile = () => {
     }
   };
 
+  const handleEditBook = (book) => {
+    setEditBook(book);
+    setNewBook(book);
+    setShowAddBookForm(true);
+  };
+
+  const handleUpdateBook = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.put(`http://localhost:3001/api/admin/update-book/${editBook._id}`, newBook, { headers });
+      fetchData();
+      setShowAddBookForm(false);
+      setEditBook(null);
+    } catch (error) {
+      console.error("Update Book Error:", error);
+    }
+  };
+
+  const handleEditUser = (user) => {
+    setEditUser(user);
+    setNewUser(user);
+    setShowAddUserForm(true);
+  };
+
+  const handleUpdateUser = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.put(`http://localhost:3001/api/admin/update-user/${editUser._id}`, newUser, { headers });
+      fetchUsers();
+      setShowAddUserForm(false);
+      setEditUser(null);
+    } catch (error) {
+      console.error("Update User Error:", error);
+    }
+  };
+
   return (
     <div className="p-6">
       <Tabs defaultValue="manage-books">
@@ -276,7 +319,9 @@ const AdminProfile = () => {
                   <Input name="language" placeholder="Language" value={newBook.language} onChange={handleInputChange} />
                   <Input name="totalCopies" type="number" placeholder="Total Copies" value={newBook.totalCopies} onChange={handleInputChange} />
                 </div>
-                <Button onClick={handleAddBook} className="mt-4">Submit Book</Button>
+                <Button onClick={editBook ? handleUpdateBook : handleAddBook}>
+                  {editBook ? "Update Book" : "Submit User"}
+                </Button>
               </div>
             )}
           </Card>
@@ -296,6 +341,8 @@ const AdminProfile = () => {
                   <td>{book.author}</td>
                   <td>
                     <Button onClick={() => handleDeleteBook(book._id)}>Delete</Button>
+                    <Button onClick={() => handleEditBook(book)}>Update</Button>
+                    <Button onClick={() => navigate(`/book-profile/${book._id}`)}>Details</Button>
                   </td>
                 </tr>
               ))}
@@ -325,7 +372,9 @@ const AdminProfile = () => {
                   <Input name="department" placeholder="Department" value={newUser.department} onChange={handleUserChange} />
                   <Input name="phone" placeholder="Phone" value={newUser.phone} onChange={handleUserChange} />
                 </div>
-                <Button onClick={handleAddUser} className="mt-4">Submit User</Button>
+                <Button onClick={editUser ? handleUpdateUser : handleAddUser}>
+                  {editUser ? "Update User" : "Submit User"}
+                </Button>
               </div>
             )}
           </Card>
@@ -347,6 +396,8 @@ const AdminProfile = () => {
                   <td>{user.role}</td>
                   <td>
                     <Button onClick={() => handleDeleteUser(user._id)}>Delete</Button>
+                    <Button onClick={() => handleEditUser(user)}>Update</Button>
+                    <Button onClick={() => handleViewProfile(user._id)}>Profile</Button>
                   </td>
                 </tr>
               ))}

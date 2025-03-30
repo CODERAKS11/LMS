@@ -73,6 +73,29 @@ const SearchCatalog = () => {
         }
     };
 
+    const handleReserve = (bookId) => {
+        // Check if the user is logged in (i.e., if there's an auth token in localStorage)
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+            // If no token, redirect to login page
+            navigate('/login');
+        } else {
+            // If the user is logged in, proceed with the reservation action
+            axios.post(`http://localhost:3001/api/users/reserve/${bookId}`, {}, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                alert("Book reserved successfully!");
+            })
+            .catch(error => {
+                console.error('Error reserving book:', error);
+                alert("Error reserving book.");
+            });
+        }
+    };
+
     return (
         <>
             <div className="search">
@@ -113,7 +136,7 @@ const SearchCatalog = () => {
                     <div className="search-results">
                         <h3>Search Results:</h3>
                         <ul>
-                            {searchResults.map((book) => (
+                        {searchResults.map((book) => (
                                 <li key={book._id}>
                                     <img src={book.coverImage} height="100px" width="100px" alt={book.title} />
 
@@ -122,10 +145,16 @@ const SearchCatalog = () => {
                                     <p>{book.isbn}</p>
                                     <p>{book.callNumber}</p>
 
-                                    {/* Add Borrow Button */}
-                                    <button onClick={() => handleBorrow(book._id)} className="borrow-button">
-                                        Borrow
-                                    </button>
+                                    {/* Show Borrow or Reserve button based on availability */}
+                                    {book.availableCopies > 0 ? (
+                                        <button onClick={() => handleBorrow(book._id)} className="borrow-button">
+                                            Borrow
+                                        </button>
+                                    ) : (
+                                        <button onClick={() => handleReserve(book._id)} className="reserve-button">
+                                            Reserve
+                                        </button>
+                                    )}
                                 </li>
                             ))}
                         </ul>

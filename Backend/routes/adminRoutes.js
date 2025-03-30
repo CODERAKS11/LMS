@@ -80,6 +80,43 @@ router.get("/users", adminMiddleware, async (req, res) => {
     }
 });
 
+// ✅ Admin: Get User Details by ID
+router.get("/users/:userId", adminMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.userId).populate("borrowedBooks.bookId", "title author");
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        res.status(200).json(user);
+    } catch (error) {
+        console.error("Error fetching user details:", error);
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+});
+
+// ✅ Admin: Update User Details
+router.put("/update-user/:userId", adminMiddleware, async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const updates = req.body;
+
+        // Prevent updating the role to "admin" if not already an admin
+        if (updates.role === "admin") {
+            return res.status(403).json({ message: "Cannot assign admin role" });
+        }
+
+        const user = await User.findByIdAndUpdate(userId, updates, { new: true });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.status(200).json({ message: "User updated successfully", user });
+    } catch (error) {
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+});
+
 // ✅ 5️⃣ Admin: Delete a User
 router.delete("/delete-user/:userId", adminMiddleware, async (req, res) => {
     try {

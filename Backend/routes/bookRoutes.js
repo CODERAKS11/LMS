@@ -8,6 +8,24 @@ const adminMiddleware = require("../middlewares/adminMiddleware.js");
 const User = require("../models/userModel.js");
 
 const router = express.Router();
+// Get details of a book by bookId
+router.get("/:bookId", async (req, res) => {
+    try {
+        const { bookId } = req.params;
+
+        // Find the book by its ID
+        const book = await Book.findById(bookId);
+
+        if (!book) {
+            return res.status(404).json({ message: "Book not found" });
+        }
+
+        res.status(200).json(book);
+    } catch (error) {
+        console.error("Error fetching book details:", error);
+        res.status(500).json({ message: "Server Error", error });
+    }
+});
 
 // Search books by title (partial match) and limit results
 router.get("/search", async (req, res) => {
@@ -167,6 +185,8 @@ router.put("/override-renewal/:userId/:bookId", adminMiddleware, async (req, res
         res.status(500).json({ message: "Server Error", error });
     }
 });
+
+
 
 
 module.exports = router;

@@ -10,6 +10,9 @@ const bookSearch = require("./routes/bookRoutes");
 const userRoutes = require("./routes/userRoutes");
 const adminRoutes = require('./routes/adminRoutes.js');
 const Notification = require("./models/notificationModel");
+const readingChallengesRoutes = require('./routes/readingChallenges');
+const bookClubsRoutes = require('./routes/bookClubs');
+
 dotenv.config({
     path: './.env'
 });
@@ -18,7 +21,8 @@ app.use(express.json())
 
 app.use('/api/admin', adminRoutes);
 app.use("/api/books",bookSearch)
-
+app.use('/api/reading-challenges',readingChallengesRoutes);
+app.use('/api/book-clubs', bookClubsRoutes);
 app.use("/api/users", userRoutes);
 
 app.get("/notifications",  async (req, res) => {

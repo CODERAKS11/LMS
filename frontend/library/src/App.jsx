@@ -16,6 +16,8 @@ import UserProfile from './Components/UserProfile.jsx';
 import EachUserProfile from './Page/EachUserProfile.jsx';
 import AdminProfile from './Components/AdminProfile.jsx';  // ✅ Admin Dashboard
 import BookProfile from './Components/BookProfile.jsx';
+import BookClubs from './Components/BookClubs.jsx';
+import ReadingChallenges from './Components/ReadingChallenges.jsx';
 
 const AppContent = () => {
   const [about, setAbout] = useState(false);
@@ -42,6 +44,8 @@ const AppContent = () => {
             <Route path="/borrow" element={<BorrowPage />} />
             <Route path="/saved-books" element={<SavedBooks />} />
             <Route path="/borrowed-books" element={<BorrowedBooks />} />
+            <Route path="/reading-challenges" element={<ReadingChallenges />} />
+            <Route path="/book-clubs" element={<BookClubs />} />
           </Routes>
         </AnimatePresence>
       </main>

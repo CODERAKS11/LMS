@@ -57,6 +57,20 @@ const userSchema = new mongoose.Schema(
       }
   ],
 
+  badges: [{
+    name: String,
+    earnedAt: { type: Date, default: Date.now },
+    challengeId: { type: mongoose.Schema.Types.ObjectId, ref: 'ReadingChallenge' }
+  }],
+  points: { type: Number, default: 0 },
+  readingStats: {
+    totalBooksRead: { type: Number, default: 0 },
+    totalPagesRead: { type: Number, default: 0 },
+    favoriteGenres: [String],
+    currentStreak: { type: Number, default: 0 },
+    longestStreak: { type: Number, default: 0 }
+  },
+
     // Account Management
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }

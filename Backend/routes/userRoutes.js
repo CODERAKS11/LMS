@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const Book = require("../models/bookModel");
+const Notification = require("../models/notificationModel");
 const authMiddleware = require("../middlewares/authMiddleware.js"); // Protect routes
 const adminMiddleware = require("../middlewares/adminMiddleware.js"); // Protect admin routes
 const router = express.Router();
@@ -45,6 +46,17 @@ router.post("/login", async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        // Hardcoded admin credentials
+        if (email === "admin@lms.com" && password === "admin123") {
+            // You can set any admin user info here
+            const token = jwt.sign({ id: "admin", role: "admin" }, secretKey, { expiresIn: "1h" });
+            return res.status(200).json({
+                message: "Admin login successful",
+                token,
+                user: { id: "admin", name: "Admin", role: "admin" }
+            });
+        }
+
         // Find user by email
         const user = await User.findOne({ email });
         if (!user) return res.status(404).json({ message: "User not found" });
@@ -68,13 +80,15 @@ router.get("/profile", authMiddleware, async (req, res) => {
         const user = await User.findById(req.user.id).select("-password");
         if (!user) return res.status(404).json({ message: "User not found" });
 
+        // Filter borrowedBooks to include only books with status "borrowed"
+        user.borrowedBooks = user.borrowedBooks.filter(book => book.status === "borrowed");
+
         res.status(200).json(user);
     } catch (error) {
         res.status(500).json({ message: "Server Error", error });
     }
 });
 
-// 📌 4️⃣ Borrow a Book (Protected)
 // 📌 4️⃣ Borrow a Book (Protected)
 router.post("/borrow/:bookId", authMiddleware, async (req, res) => {
     try {
@@ -145,6 +159,12 @@ router.post("/borrow/:bookId", authMiddleware, async (req, res) => {
         await user.save();
         await book.save();
 
+        await Notification.create({
+            userId: user._id,
+            message: `You have borrowed "${book.title}". Due date: ${dueDate.toLocaleDateString()}`,
+            type: "borrow"
+        });
+
         res.status(200).json({
             message: "Book borrowed successfully",
             borrowedBook: { bookId: book._id, borrowDate, dueDate },
@@ -156,40 +176,28 @@ router.post("/borrow/:bookId", authMiddleware, async (req, res) => {
 });
 
 // 📌 5️⃣ Return a Book (Protected)
-router.post("/return/:userId/:bookId", authMiddleware, async (req, res) => {
+router.post("/return/:userId/:bookId",  async (req, res) => {
     try {
-        // const user = await User.findById(req.user.id);
         const { userId, bookId } = req.params; 
         const user = await User.findById(userId);
         const book = await Book.findById(bookId);
-        console.log(user, book);
         if (!user) return res.status(404).json({ message: "User not found" });
         if (!book) return res.status(404).json({ message: "Book not found" });
 
-        // Find the borrowed book in user's records
-        const borrowedBook = await user.borrowedBooks.find(b => 
+        const borrowedBook = user.borrowedBooks.find(b => 
             b.bookId.toString() === book._id.toString() && b.status === "borrowed"
         );
-        // console.log(borrowedBook);
-        // Find the corresponding borrowed record in the book's borrowers list
-        const returnedBook =await book.borrowers.find(b => 
+        const returnedBook = book.borrowers.find(b => 
             b.userId.toString() === user._id.toString() && b.returnDate === null
         );
-        // console.log(returnedBook);
-        // console.log("borrowed book comp",b.bookId.toString() ,book._id.toString())
-        // console.log("returned book comp",b.userId.toString(), user._id.toString())
         if (!borrowedBook || !returnedBook) {
             return res.status(400).json({ message: "Book not borrowed or already returned" });
         }
-
-        // if (!returnedBook) {
-        //     return res.status(400).json({ message: "Book already returned" });
 
         // Set return date
         const returnDate = new Date();
         borrowedBook.status = "returned";
         borrowedBook.returnDate = returnDate;
-
         returnedBook.returnDate = returnDate;
         returnedBook.isReturned = true;
 
@@ -197,22 +205,55 @@ router.post("/return/:userId/:bookId", authMiddleware, async (req, res) => {
         const dueDate = borrowedBook.dueDate;
         let fine = 0;
         if (returnDate > dueDate) {
-            const daysLate = Math.ceil((returnDate - dueDate) / (1000 * 60 * 60 * 24)); // Convert milliseconds to days
-            fine = daysLate * 0.5; // ₹0.5 per day
+            const daysLate = Math.ceil((returnDate - dueDate) / (1000 * 60 * 60 * 24));
+            fine = daysLate * 0.5;
         }
-
-        // Update fine in user and book records
         borrowedBook.fine = fine;
         returnedBook.fine = fine;
-        
 
         // Increase available copies of the book
         book.availableCopies += 1;
 
+        // --- Badge & Milestone Logic ---
+        user.totalBooksRead = (user.totalBooksRead || 0) + 1;
+
+        let newBadges = [];
+        if (user.totalBooksRead === 1 && !user.badges.includes("First Book")) {
+            user.badges.push("First Book");
+            newBadges.push("First Book");
+        }
+        if (user.totalBooksRead === 10 && !user.badges.includes("Bookworm")) {
+            user.badges.push("Bookworm");
+            user.milestones.push("10 Books Read");
+            newBadges.push("Bookworm");
+        }
+        if (user.totalBooksRead === 25 && !user.badges.includes("Avid Reader")) {
+            user.badges.push("Avid Reader");
+            user.milestones.push("25 Books Read");
+            newBadges.push("Avid Reader");
+        }
+        // Add more as needed
+
         await user.save();
         await book.save();
 
-        res.status(200).json({ message: "Book returned successfully", fine });
+        // Send notification for return
+        await Notification.create({
+            userId: user._id,
+            message: `You have returned "${book.title}".`,
+            type: "return"
+        });
+
+        // Send notification for new badges
+        for (const badge of newBadges) {
+            await Notification.create({
+                userId: user._id,
+                message: `Congratulations! You earned a new badge: "${badge}"`,
+                type: "badge"
+            });
+        }
+
+        res.status(200).json({ message: "Book returned successfully", fine, badges: user.badges, milestones: user.milestones });
     } catch (error) {
         res.status(500).json({ message: "Server Error", error });
     }
@@ -273,6 +314,13 @@ router.put("/renew/:bookId", authMiddleware, async (req, res) => {
         user.renewalHistory.push({ bookId: book._id, renewedDate: new Date(), newDueDate: borrowedBook.dueDate });
 
         await user.save();
+
+        await Notification.create({
+            userId: user._id,
+            message: `You have renewed "${book.title}". New due date: ${borrowedBook.dueDate.toLocaleDateString()}`,
+            type: "renew"
+        });
+
         res.status(200).json({ message: "Book renewed successfully", borrowedBook });
     } catch (error) {
         res.status(500).json({ message: "Server Error", error });
@@ -307,6 +355,12 @@ router.post("/reserve/:bookId", authMiddleware, async (req, res) => {
 
         await book.save();
         await user.save();
+
+        await Notification.create({
+            userId: user._id,
+            message: `You have reserved "${book.title}". We will notify you when it is available.`,
+            type: "reserve"
+        });
 
         res.status(200).json({ message: "Book reserved successfully" });
     } catch (error) {
@@ -404,6 +458,60 @@ router.post("/review/:bookId", authMiddleware, async (req, res) => {
         res.status(500).json({ message: "Server Error", error: error.message });
     }
 });
+
+router.get("/leaderboard", async (req, res) => {
+    try {
+        const topUsers = await User.find()
+            .sort({ totalBooksRead: -1 })
+            .limit(10)
+            .select("name totalBooksRead badges");
+        res.status(200).json(topUsers);
+    } catch (error) {
+        res.status(500).json({ message: "Server Error", error });
+    }
+});
+
+router.get("/notifications", authMiddleware, async (req, res) => {
+  try {
+    const filter = {};
+    filter.userId = req.user.id;
+
+    // Optional query parameter: ?unread=true
+    if (req.query.unread === "true") {
+      filter.read = false;
+    }
+
+    const notifications = await Notification.find(filter).sort({ createdAt: -1 });
+    res.status(200).json(notifications);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
+
+// ✅ Mark a notification as read
+router.put("/notifications/:id/read", authMiddleware, async (req, res) => {
+  try {
+    const notification = await Notification.findOne({
+      _id: req.params.id,
+      userId: req.user.id,
+    });
+
+    if (!notification) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+
+    // Update read status
+    notification.read = true;
+    await notification.save();
+
+    res.status(200).json({ message: "Notification marked as read" });
+  } catch (error) {
+    console.error("Error marking notification as read:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
 
 
 module.exports = router;

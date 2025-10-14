@@ -4,9 +4,9 @@ const User = require("../models/userModel");
 const Book = require("../models/bookModel");
 const adminMiddleware = require("../middlewares/adminMiddleware");
 const bcrypt = require("bcryptjs");
-
+const mongoose = require("mongoose");
 // ✅ 1️⃣ Admin: Add a New Book
-router.post("/add-book", adminMiddleware, async (req, res) => {
+router.post("/add-book",  async (req, res) => {
     try {
         const { title, author, genre, ISBN, callNumber, totalCopies } = req.body;
 
@@ -37,7 +37,7 @@ router.post("/add-book", adminMiddleware, async (req, res) => {
 });
 
 // ✅ 2️⃣ Admin: Update Book Details
-router.put("/update-book/:bookId", adminMiddleware, async (req, res) => {
+router.put("/update-book/:bookId",  async (req, res) => {
     try {
         const bookId = req.params.bookId;
         const updates = req.body;
@@ -55,7 +55,7 @@ router.put("/update-book/:bookId", adminMiddleware, async (req, res) => {
 });
 
 // ✅ 3️⃣ Admin: Delete a Book
-router.delete("/delete-book/:bookId", adminMiddleware, async (req, res) => {
+router.delete("/delete-book/:bookId", async (req, res) => {
     try {
         const bookId = req.params.bookId;
         const book = await Book.findByIdAndDelete(bookId);
@@ -71,7 +71,7 @@ router.delete("/delete-book/:bookId", adminMiddleware, async (req, res) => {
 });
 
 // ✅ 4️⃣ Admin: List All Users
-router.get("/users", adminMiddleware, async (req, res) => {
+router.get("/users",  async (req, res) => {
     try {
         const users = await User.find().select("-password");
         res.status(200).json(users);
@@ -80,22 +80,35 @@ router.get("/users", adminMiddleware, async (req, res) => {
     }
 });
 
-// ✅ Admin: Get User Details by ID
-router.get("/users/:userId", adminMiddleware, async (req, res) => {
-    try {
-        const user = await User.findById(req.params.userId).populate("borrowedBooks.bookId", "title author");
-        if (!user) {
-            return res.status(404).json({ message: "User not found" });
-        }
-        res.status(200).json(user);
-    } catch (error) {
-        console.error("Error fetching user details:", error);
-        res.status(500).json({ message: "Server Error", error: error.message });
+router.get("/users/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ message: "Invalid user ID" });
     }
+
+    let user = await User.findById(userId)
+      .populate("borrowedBooks.bookId")
+      .populate("reservations.bookId");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // 🧹 Remove borrowedBooks where bookId is null
+    user.borrowedBooks = user.borrowedBooks.filter(
+      (book) => book.bookId !== null
+    );
+
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
 });
 
+
 // ✅ Admin: Update User Details
-router.put("/update-user/:userId", adminMiddleware, async (req, res) => {
+router.put("/update-user/:userId",  async (req, res) => {
     try {
         const userId = req.params.userId;
         const updates = req.body;
@@ -118,7 +131,7 @@ router.put("/update-user/:userId", adminMiddleware, async (req, res) => {
 });
 
 // ✅ 5️⃣ Admin: Delete a User
-router.delete("/delete-user/:userId", adminMiddleware, async (req, res) => {
+router.delete("/delete-user/:userId",  async (req, res) => {
     try {
         const userId = req.params.userId;
         const user = await User.findByIdAndDelete(userId);
@@ -134,7 +147,7 @@ router.delete("/delete-user/:userId", adminMiddleware, async (req, res) => {
 });
 
 // ✅ 6️⃣ Admin: Reset User's Password
-router.put("/reset-password/:userId", adminMiddleware, async (req, res) => {
+router.put("/reset-password/:userId", async (req, res) => {
     try {
         const { newPassword } = req.body;
         const userId = req.params.userId;
@@ -154,7 +167,7 @@ router.put("/reset-password/:userId", adminMiddleware, async (req, res) => {
 });
 
 // ✅ 7️⃣ Admin: View Reservations
-router.get("/reservations", adminMiddleware, async (req, res) => {
+router.get("/reservations",  async (req, res) => {
     try {
         const books = await Book.find({ reservedBy: { $exists: true, $not: { $size: 0 } } })
             .populate("reservedBy", "name email");
@@ -166,7 +179,7 @@ router.get("/reservations", adminMiddleware, async (req, res) => {
 });
 
 // ✅ 8️⃣ Admin: Override Book Renewal Limit
-router.put("/override-renewal/:userId/:bookId", adminMiddleware, async (req, res) => {
+router.put("/override-renewal/:userId/:bookId", async (req, res) => {
     try {
         const { userId, bookId } = req.params;
 
@@ -195,7 +208,7 @@ router.put("/override-renewal/:userId/:bookId", adminMiddleware, async (req, res
 });
 
 // ✅ 9️⃣ Admin: Get Most Borrowed Books Report
-router.get("/report/most-borrowed", adminMiddleware, async (req, res) => {
+router.get("/report/most-borrowed",  async (req, res) => {
     try {
         const books = await Book.find().sort({ borrowCount: -1 }).limit(10);
         res.status(200).json(books);
@@ -205,7 +218,7 @@ router.get("/report/most-borrowed", adminMiddleware, async (req, res) => {
 });
 
 // ✅ 🔟 Admin: Get Most Searched Books Report
-router.get("/report/most-searched", adminMiddleware, async (req, res) => {
+router.get("/report/most-searched",  async (req, res) => {
     try {
         const books = await Book.find().sort({ searchCount: -1 }).limit(10);
         res.status(200).json(books);
@@ -215,7 +228,7 @@ router.get("/report/most-searched", adminMiddleware, async (req, res) => {
 });
 
 // ✅ 1️⃣1️⃣ Admin: Generate Fine Report
-router.get("/report/fines", adminMiddleware, async (req, res) => {
+router.get("/report/fines",  async (req, res) => {
     try {
         const usersWithFines = await User.find({
             "borrowedBooks.fine": { $gt: 0 }
@@ -239,7 +252,7 @@ router.get("/report/fines", adminMiddleware, async (req, res) => {
 });
 
 // ✅ 1️⃣2️⃣ Admin: View Borrowed Books (All Users)
-router.get("/borrowed-books", adminMiddleware, async (req, res) => {
+router.get("/borrowed-books",  async (req, res) => {
     try {
         const users = await User.find({ "borrowedBooks.status": "borrowed" })
             .populate("borrowedBooks.bookId", "title author");
@@ -261,5 +274,89 @@ router.get("/borrowed-books", adminMiddleware, async (req, res) => {
         res.status(500).json({ message: "Server Error", error: error.message });
     }
 });
+
+// ✅ 1️⃣ Admin: Add a New User
+router.post("/add-user",  async (req, res) => {
+    try {
+        const { name, email, role, password, studentId, department, phone } = req.body;
+        if (!name || !email || !role || !password) {
+            return res.status(400).json({ message: "Missing required fields" });
+        }
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ message: "User already exists" });
+        }
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = new User({
+            name,
+            email,
+            role,
+            password: hashedPassword,
+            studentId,
+            department,
+            phone,
+        });
+        await newUser.save();
+        res.status(201).json({ message: "User added successfully", user: newUser });
+    } catch (error) {
+        res.status(500).json({ message: "Server Error", error: error.message });
+    }
+});
+
+// ✅ 13️⃣ Admin: Insights & Statistics Dashboard
+router.get("/report/dashboard", async (req, res) => {
+  try {
+    const totalBooks = await Book.countDocuments();
+    const totalUsers = await User.countDocuments();
+    const borrowedBooks = await User.aggregate([
+      { $unwind: "$borrowedBooks" },
+      { $match: { "borrowedBooks.status": "borrowed" } },
+      { $count: "count" }
+    ]);
+    const totalBorrowed = borrowedBooks[0]?.count || 0;
+
+    const totalFine = await User.aggregate([
+      { $unwind: "$borrowedBooks" },
+      { $group: { _id: null, totalFine: { $sum: "$borrowedBooks.fine" } } }
+    ]);
+    const fineCollected = totalFine[0]?.totalFine || 0;
+
+    // Most borrowed books
+    const mostBorrowedBooks = await Book.find().sort({ borrowCount: -1 }).limit(5).select("title author borrowCount");
+
+    // Top readers
+    const topReaders = await User.aggregate([
+      { $project: { name: 1, borrowedCount: { $size: "$borrowedBooks" } } },
+      { $sort: { borrowedCount: -1 } },
+      { $limit: 5 }
+    ]);
+
+    // Borrowing trend (last 6 months)
+    const monthlyBorrowTrend = await User.aggregate([
+      { $unwind: "$borrowedBooks" },
+      {
+        $group: {
+          _id: { $month: "$borrowedBooks.borrowedDate" },
+          total: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id": 1 } },
+    ]);
+
+    res.status(200).json({
+      totalBooks,
+      totalUsers,
+      totalBorrowed,
+      fineCollected,
+      mostBorrowedBooks,
+      topReaders,
+      monthlyBorrowTrend,
+    });
+  } catch (error) {
+    console.error("Dashboard Error:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
 
 module.exports = router;

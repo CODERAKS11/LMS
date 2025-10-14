@@ -24,9 +24,15 @@ const SearchCatalog = () => {
 
         setLoading(true);
         try {
-            let url = `http://localhost:3001/api/books/search?title=${searchQuery}`; // URL for title search
+            let url = `http://localhost:3001/api/books/search?title=${searchQuery}`;
             if (option === "call number") {
-                url = `/search/${searchQuery}`; // URL for call number search
+                url = `http://localhost:3001/api/books/search/callnumber?callNumber=${searchQuery}`;
+            }
+            if (option === "isbn") {
+                url = `http://localhost:3001/api/books/search/isbn?isbn=${searchQuery}`;
+            }
+            if (option === "author") {
+                url = `http://localhost:3001/api/books/search/author?author=${searchQuery}`;
             }
 
             const response = await axios.get(url);

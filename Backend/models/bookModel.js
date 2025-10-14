@@ -5,7 +5,7 @@ dotenv.config({
     path:'./.env'
 })
 
-const url=process.env.MONGODB_URI || "mongodb+srv://amarjeetakskumar:iax9SFA2jgzWRmKh@lms.9ki4i.mongodb.net/?retryWrites=true&w=majority&appName=LMS";
+const url=process.env.MONGODB_URI || "mongodb+srv://amarjeetakskumar:ojhTR4AsAh1hYTue@lms.9ki4i.mongodb.net/?retryWrites=true&w=majority&appName=LMS";
 console.log("connecting to MongoDB",url);
 
 mongoose.connect(url)

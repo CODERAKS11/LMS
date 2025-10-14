@@ -1,31 +1,13 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const Book = require("../models/bookModel"); // Import your Book model
-
+const Notification = require("../models/notificationModel");
 const authMiddleware = require("../middlewares/authMiddleware.js");
 const adminMiddleware = require("../middlewares/adminMiddleware.js");
 
 const User = require("../models/userModel.js");
 
 const router = express.Router();
-// Get details of a book by bookId
-router.get("/:bookId", async (req, res) => {
-    try {
-        const { bookId } = req.params;
-
-        // Find the book by its ID
-        const book = await Book.findById(bookId);
-
-        if (!book) {
-            return res.status(404).json({ message: "Book not found" });
-        }
-
-        res.status(200).json(book);
-    } catch (error) {
-        console.error("Error fetching book details:", error);
-        res.status(500).json({ message: "Server Error", error });
-    }
-});
 
 // Search books by title (partial match) and limit results
 router.get("/search", async (req, res) => {
@@ -53,6 +35,96 @@ router.get("/search", async (req, res) => {
         res.status(500).json({ message: "Server Error", error });
     }
 });
+
+// Search books by author (partial match)
+router.get("/search/author", async (req, res) => {
+    try {
+        const { author } = req.query;
+        if (!author) {
+            return res.status(400).json({ message: "Please provide an author query." });
+        }
+        const books = await Book.find({ author: { $regex: author, $options: "i" } }).limit(50);
+        if (books.length === 0) {
+            return res.status(404).json({ message: "No books found." });
+        }
+        await Book.updateMany(
+            { author: { $regex: author, $options: "i" } },
+            { $inc: { searchCount: 1 } }
+        );
+        res.status(200).json(books);
+    } catch (error) {
+        res.status(500).json({ message: "Server Error", error });
+    }
+});
+
+// Search books by ISBN (partial and flexible match)
+router.get("/search/isbn", async (req, res) => {
+    try {
+        let { isbn } = req.query;
+        if (!isbn) {
+            return res.status(400).json({ message: "Please provide an ISBN query." });
+        }
+        // Remove spaces and hyphens from query
+        isbn = isbn.replace(/[\s-]/g, "");
+        // Search with regex, ignoring spaces/hyphens
+        const books = await Book.find({
+            ISBN: { $regex: isbn, $options: "i" }
+        }).limit(50);
+        if (books.length === 0) {
+            return res.status(404).json({ message: "No books found." });
+        }
+        await Book.updateMany(
+            { ISBN: { $regex: isbn, $options: "i" } },
+            { $inc: { searchCount: 1 } }
+        );
+        res.status(200).json(books);
+    } catch (error) {
+        res.status(500).json({ message: "Server Error", error });
+    }
+});
+
+// Search books by call number (partial match)
+router.get("/search/callnumber", async (req, res) => {
+    try {
+        const { callNumber } = req.query;
+        if (!callNumber) {
+            return res.status(400).json({ message: "Please provide a call number query." });
+        }
+        const books = await Book.find({ callNumber: { $regex: callNumber, $options: "i" } }).limit(50);
+        if (books.length === 0) {
+            return res.status(404).json({ message: "No books found." });
+        }
+        await Book.updateMany(
+            { callNumber: { $regex: callNumber, $options: "i" } },
+            { $inc: { searchCount: 1 } }
+        );
+        res.status(200).json(books);
+    } catch (error) {
+        res.status(500).json({ message: "Server Error", error });
+    }
+});
+
+
+// Get details of a book by bookId
+router.get("/:bookId", async (req, res) => {
+    try {
+        const { bookId } = req.params;
+
+        // Find the book by its ID
+        const book = await Book.findById(bookId);
+
+        if (!book) {
+            return res.status(404).json({ message: "Book not found" });
+        }
+
+        res.status(200).json(book);
+    } catch (error) {
+        console.error("Error fetching book details:", error);
+        res.status(500).json({ message: "Server Error", error });
+    }
+});
+
+
 
 // Search for a book by call number
 router.get("/search/:callNumber", async (req, res) => {
@@ -111,6 +183,11 @@ router.put("/renew/:bookId", authMiddleware, async (req, res) => {
         });
 
         await user.save();
+        await Notification.create({
+            userId: user._id,
+            message: `You have renewed "${book.title}". New due date: ${borrowedBook.dueDate.toLocaleDateString()}`,
+            type: "renew"
+        });
 
         res.status(200).json({ message: "Book renewed successfully", borrowedBook });
     } catch (error) {
@@ -138,6 +215,11 @@ router.post("/reserve/:bookId", authMiddleware, async (req, res) => {
 
         book.reservedBy.push(user._id);
         await book.save();
+        await Notification.create({
+            userId: user._id,
+            message: `You have reserved "${book.title}". We will notify you when it is available.`,
+            type: "reserve"
+        });
 
         res.status(200).json({ message: "Book reserved successfully" });
     } catch (error) {

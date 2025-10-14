@@ -17,6 +17,9 @@ const userSchema = new mongoose.Schema(
     facultyId: { type: String, unique: true, sparse: true }, // Faculty ID (for faculty)
     department: { type: String, required: true }, // IT, CSE, ECE, etc.
     phone: { type: String, required: true }, // Contact Number
+    badges: [{ type: String }], // e.g., "Bookworm", "Speed Reader"
+    milestones: [{ type: String }], // e.g., "10 Books Read"
+    totalBooksRead: { type: Number, default: 0 },
 
     // Borrowing Details
     borrowedBooks: [

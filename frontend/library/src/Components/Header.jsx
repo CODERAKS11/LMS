@@ -44,17 +44,17 @@ const Header = ({ setAbout, setMyBooks }) => {
 
     return (
         <header className="bg-white shadow-md">
-            <div className="container mx-auto px-4 py-4">
-                <div className="flex flex-col space-y-4">
+            <div className="flex items-center justify-center gap-4 p-4 max-w-7xl mx-auto">
+                <div className="flex items-center justify-center gap-4">
                     
                     {/* Logo */}
-                    <div className="flex items-center">
-                        <img src={soeicon} alt="SOE Icon" className="w-8 h-8" />
-                        <h1 className="text-2xl font-bold text-gray-800 ml-0">SOE Library</h1>
+                    <div className="inline-block flex items-center">
+                        {/* <img src={soeicon} alt="SOE Icon" className="w-8 h-8" /> */}
+                        <h1 className="text-2xl font-bold text-gray-800 ml-0">Library Link</h1>
                     </div>
 
                     {/* Navigation Menu */}
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-8">
                         <button
                             onClick={() => setOpen(true)}
                             className="text-gray-600 hover:text-gray-800"
@@ -80,8 +80,8 @@ const Header = ({ setAbout, setMyBooks }) => {
                             My Books
                         </button>
 
-                        {/* Resources Dropdown */}
-                        <div className="relative">
+                        {/* Resources Dropdown
+                        <div className="relative"> */}
                             <button
                                 onClick={() => setResources(!resources)}
                                 className="text-lg font-medium italic text-gray-700 hover:text-gray-900 transition-colors bg-transparent"
@@ -108,10 +108,10 @@ const Header = ({ setAbout, setMyBooks }) => {
                                     </motion.div>
                                 )}
                             </AnimatePresence>
-                        </div>
+                        {/* </div> */}
 
                         {/* Other Info Dropdown */}
-                        <div className="relative">
+                        {/* <div className="relative"> */}
                             <button
                                 onClick={() => setOthers(!others)}
                                 className="text-lg font-medium italic text-gray-700 hover:text-gray-900 transition-colors bg-transparent"
@@ -138,10 +138,10 @@ const Header = ({ setAbout, setMyBooks }) => {
                                     </motion.div>
                                 )}
                             </AnimatePresence>
-                        </div>
+                        {/* </div> */}
 
                         {/* User Dropdown with Sign In & Admin Login */}
-                        <div className="relative ml-auto">
+                        {/* <div className="relative ml-auto"> */}
                             <button
                                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                                 className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
@@ -175,7 +175,7 @@ const Header = ({ setAbout, setMyBooks }) => {
                                     </motion.div>
                                 )}
                             </AnimatePresence>
-                        </div>
+                        {/* </div> */}
                     </div>
                 </div>
             </div>

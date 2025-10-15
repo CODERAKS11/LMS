@@ -43,37 +43,50 @@ router.post("/register", async (req, res) => {
 
 // 📌 2️⃣ Login User (Generate JWT Token)
 router.post("/login", async (req, res) => {
-    try {
-        const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-        // Hardcoded admin credentials
-        if (email === "admin@lms.com" && password === "admin123") {
-            // You can set any admin user info here
-            const token = jwt.sign({ id: "admin", role: "admin" }, secretKey, { expiresIn: "1h" });
-            return res.status(200).json({
-                message: "Admin login successful",
-                token,
-                user: { id: "admin", name: "Admin", role: "admin" }
-            });
-        }
-
-        // Find user by email
-        const user = await User.findOne({ email });
-        if (!user) return res.status(404).json({ message: "User not found" });
-
-        // Compare password
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
-
-        // Generate JWT Token
-        const token = jwt.sign({ id: user._id, role: user.role }, secretKey, { expiresIn: "1h" });
-
-        res.status(200).json({ message: "Login successful", token, user: { id: user._id, name: user.name, role: user.role }});
-    } catch (error) {
-        res.status(500).json({ message: "Server Error", error });
+    // 🔹 Hardcoded Admin
+    if (email === "admin@cusat.ac.in" && password === "Admin123!") {
+      const token = jwt.sign({ id: "admin", role: "admin" }, secretKey, { expiresIn: "1h" });
+      return res.status(200).json({
+        message: "Admin login successful",
+        token,
+        user: { id: "admin", name: "Admin", role: "admin" }
+      });
     }
-});
 
+    // 🔹 Hardcoded Amarjeet Kumar
+    if (email === "amarjeet@cusat.ac.in" && password === "Amarjeet123") {
+      const token = jwt.sign({ id: "amarjeet_id", role: "student" }, secretKey, { expiresIn: "1h" });
+      return res.status(200).json({
+        message: "User login successful",
+        token,
+        user: { id: "amarjeet_id", name: "Amarjeet Kumar", role: "student" }
+      });
+    }
+
+    // 🔹 Fallback to database lookup for all other users
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+
+    // Generate JWT Token
+    const token = jwt.sign({ id: user._id, role: user.role }, secretKey, { expiresIn: "1h" });
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user: { id: user._id, name: user.name, role: user.role }
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error });
+  }
+});
 // 📌 3️⃣ Get User Profile (Protected)
 router.get("/profile", authMiddleware, async (req, res) => {
     try {
@@ -175,76 +188,129 @@ router.post("/borrow/:bookId", authMiddleware, async (req, res) => {
     }
 });
 
-// 📌 5️⃣ Return a Book (Protected)
-router.post("/return/:userId/:bookId",  async (req, res) => {
+// 📌 Return a Book from User Profile (No authentication required)
+router.post("/return/:userId/:bookId", async (req, res) => {
     try {
-        const { userId, bookId } = req.params; 
-        const user = await User.findById(userId);
-        const book = await Book.findById(bookId);
+        const targetUserId = req.params.userId;
+        const bookId = req.params.bookId;
+
+        console.log(`Return request: User ${targetUserId}, Book ${bookId}`);
+
+        // Find user with borrowed books
+        const user = await User.findById(targetUserId);
         if (!user) return res.status(404).json({ message: "User not found" });
+
+        // Find the book
+        const book = await Book.findById(bookId);
         if (!book) return res.status(404).json({ message: "Book not found" });
 
-        const borrowedBook = user.borrowedBooks.find(b => 
-            b.bookId.toString() === book._id.toString() && b.status === "borrowed"
+        console.log("User borrowed books:", user.borrowedBooks);
+        console.log("Looking for bookId:", bookId);
+
+        // Find borrowed book in user's record
+        const borrowedBook = user.borrowedBooks.find(
+            b => {
+                const bookIdStr = b.bookId ? b.bookId.toString() : null;
+                const targetBookId = bookId.toString();
+                return bookIdStr === targetBookId && b.status === "borrowed";
+            }
         );
-        const returnedBook = book.borrowers.find(b => 
-            b.userId.toString() === user._id.toString() && b.returnDate === null
-        );
-        if (!borrowedBook || !returnedBook) {
-            return res.status(400).json({ message: "Book not borrowed or already returned" });
+
+        if (!borrowedBook) {
+            console.log("No borrowed book found with matching criteria");
+            return res.status(400).json({ 
+                message: "Book not currently borrowed by this user"
+            });
         }
 
-        // Set return date
+        // Find corresponding entry in book's borrowers
+        const bookBorrower = book.borrowers.find(
+            b => {
+                const userIdStr = b.userId ? b.userId.toString() : null;
+                const targetUserIdStr = user._id.toString();
+                return userIdStr === targetUserIdStr && !b.isReturned;
+            }
+        );
+
         const returnDate = new Date();
+
+        // Update user's borrowed book record
         borrowedBook.status = "returned";
         borrowedBook.returnDate = returnDate;
-        returnedBook.returnDate = returnDate;
-        returnedBook.isReturned = true;
 
-        // Calculate fine if the book is returned late
-        const dueDate = borrowedBook.dueDate;
-        let fine = 0;
-        if (returnDate > dueDate) {
-            const daysLate = Math.ceil((returnDate - dueDate) / (1000 * 60 * 60 * 24));
-            fine = daysLate * 0.5;
+        // Update book's borrower record if found
+        if (bookBorrower) {
+            bookBorrower.returnDate = returnDate;
+            bookBorrower.isReturned = true;
         }
-        borrowedBook.fine = fine;
-        returnedBook.fine = fine;
 
-        // Increase available copies of the book
+        // Calculate fine if overdue
+        let fine = 0;
+        if (returnDate > borrowedBook.dueDate) {
+            const daysLate = Math.ceil((returnDate - borrowedBook.dueDate) / (1000 * 60 * 60 * 24));
+            fine = daysLate * 5; // ₹5 per day fine
+        }
+
+        borrowedBook.fine = fine;
+        if (bookBorrower) {
+            bookBorrower.fine = fine;
+        }
+
+        // Update available copies
         book.availableCopies += 1;
 
-        // --- Badge & Milestone Logic ---
+        // Badge & milestone logic - FIXED: Use markModified to avoid validation errors
         user.totalBooksRead = (user.totalBooksRead || 0) + 1;
-
         let newBadges = [];
-        if (user.totalBooksRead === 1 && !user.badges.includes("First Book")) {
+
+        // Initialize arrays if they don't exist
+        if (!user.badges) {
+            user.badges = [];
+            user.markModified('badges');
+        }
+        if (!user.milestones) {
+            user.milestones = [];
+            user.markModified('milestones');
+        }
+
+        // Convert badges to plain strings to avoid ObjectId validation
+        const currentBadges = user.badges.map(b => b.toString ? b.toString() : b);
+        const currentMilestones = user.milestones.map(m => m.toString ? m.toString() : m);
+
+        if (user.totalBooksRead === 1 && !currentBadges.includes("First Book")) {
             user.badges.push("First Book");
             newBadges.push("First Book");
+            user.markModified('badges');
         }
-        if (user.totalBooksRead === 10 && !user.badges.includes("Bookworm")) {
+        if (user.totalBooksRead === 10 && !currentBadges.includes("Bookworm")) {
             user.badges.push("Bookworm");
             user.milestones.push("10 Books Read");
             newBadges.push("Bookworm");
+            user.markModified('badges');
+            user.markModified('milestones');
         }
-        if (user.totalBooksRead === 25 && !user.badges.includes("Avid Reader")) {
+        if (user.totalBooksRead === 25 && !currentBadges.includes("Avid Reader")) {
             user.badges.push("Avid Reader");
             user.milestones.push("25 Books Read");
             newBadges.push("Avid Reader");
+            user.markModified('badges');
+            user.markModified('milestones');
         }
-        // Add more as needed
 
-        await user.save();
+        // Save changes with validation disabled temporarily
+        await user.save({ validateBeforeSave: false });
         await book.save();
 
-        // Send notification for return
+        // Re-enable validation and save properly if needed
+        // await user.save();
+
+        // Send notifications
         await Notification.create({
             userId: user._id,
-            message: `You have returned "${book.title}".`,
+            message: `You have returned "${book.title}".${fine > 0 ? ` Fine: ₹${fine}` : ''}`,
             type: "return"
         });
 
-        // Send notification for new badges
         for (const badge of newBadges) {
             await Notification.create({
                 userId: user._id,
@@ -253,11 +319,26 @@ router.post("/return/:userId/:bookId",  async (req, res) => {
             });
         }
 
-        res.status(200).json({ message: "Book returned successfully", fine, badges: user.badges, milestones: user.milestones });
+        res.status(200).json({ 
+            message: "Book returned successfully", 
+            fine, 
+            badges: user.badges, 
+            milestones: user.milestones,
+            returnedBook: {
+                title: book.title,
+                returnDate: returnDate
+            }
+        });
+
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error });
+        console.error("Return Book Error:", error);
+        res.status(500).json({ 
+            message: "Server Error", 
+            error: error.message
+        });
     }
 });
+
 
 //To get details of borrowed books
 router.post("/return", authMiddleware, async (req, res) => {

@@ -7,7 +7,7 @@ import book6 from '../assets/book6.jpg'
 import book7 from '../assets/book7.jpg'
 import book8 from '../assets/book8.jpeg'
 import BorrowButton from '../Components/BorrowButton'
-import cusat from '../assets/cusat.webp'
+import cusat from '../assets/download.jpeg'
 import SearchCatalog from '../Components/SearchCatalog'
 
 const Section = ()=>{

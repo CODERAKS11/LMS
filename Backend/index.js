@@ -103,7 +103,7 @@ app.get("/api/users/:id", async (req, res) => {
   }
 });
 
-app.get('/api/books-list', async (req, res) => {
+app.get('/books', async (req, res) => {
   try {
     const books = await Book.find({});
     console.log('Books retrieved successfully');

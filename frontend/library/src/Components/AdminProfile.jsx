@@ -309,11 +309,14 @@ const AdminProfile = () => {
   const handleViewBookDetails = (bookId) => navigate(`/book-profile/${bookId}`);
 
   // 🔎 Filtered Lists
-  const filteredBooks = books.filter(book =>
-    book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    book.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    book.ISBN.includes(searchQuery)
-  );
+  const filteredBooks = Array.isArray(books)
+  ? books.filter(book =>
+      (book.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (book.author?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (book.ISBN || '').includes(searchQuery)
+    )
+  : [];
+
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
